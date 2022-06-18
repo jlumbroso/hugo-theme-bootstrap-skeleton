@@ -22,8 +22,12 @@ HUGO_ENV = "production"
     X-XSS-Protection = "1; mode=block"
 
 [[redirects]]
+  from = "/docs/*"
+  to = "https://hbs-skeleton.netlify.app/:splat"
+  status = 200
+
+[[redirects]]
   from = "/:lang/*"
   to = "/:lang/404.html"
   status = 404
 
-/docs/*  https://hbs-skeleton.netlify.app/:splat  200

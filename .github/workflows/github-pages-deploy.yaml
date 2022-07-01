@@ -1,0 +1,46 @@
+name: GitHub Pages Build ⚙️ & Deploy 🚀
+
+on:
+  push:
+    branches:
+      - main # Set a branch to deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    env:
+      HUGO_ENV: "production"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+
+      - name: Setup Node.js to build theme
+        uses: actions/setup-node@v1
+        with:
+          node-version: 17.6.0
+
+      - name: Install and build Javascript part of site
+        working-directory: ./
+        run: |
+          [ -f "package.json" ] && npm install
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2.5.0
+        with:
+          hugo-version: "0.101.0"
+          extended: true
+
+      - name: Build site with Hugo
+        run: |
+          hugo mod npm pack
+          hugo --minify
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: blog
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"

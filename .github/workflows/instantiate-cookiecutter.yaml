@@ -1,40 +1,31 @@
-name: GitHub Pages Build ⚙️ & Deploy 🚀
+# Thanks to @sjmiller609 for inspiration
+# REF: https://github.com/actions/toolkit/issues/1054#issuecomment-1142634600
+#
+name: Cookiecutter Instantiation 🍪
 
 on:
+  # @sjmiller609 has found this event triggers on initial creation of
+  #new repository from github template
   push:
     branches:
-      - main # Set a branch to deploy
+      - "**"
 
 jobs:
-  deploy:
-    # pin ubuntu version
-    runs-on: ubuntu-18.04
-    env:
-      HUGO_ENV: "production"
+  cookiecutter:
+    runs-on: ubuntu-latest
+    # My repository that is a template repository includes the string "skeleton"
+    if: ${{ ! contains(github.event.repository.name, 'skeleton') }}
     steps:
       - name: Checkout ✅
-        uses: actions/checkout@v2
-
+        uses: actions/checkout@v3
+      
       # REF: https://github.community/t/run-step-if-file-exists/16445/6
       - name: Check `cookiecutter.json` file existence 🔎🍪
         id: is_uninstantiated
         uses: andstor/file-existence-action@v1
         with:
           files: "cookiecutter.json"
-
-      # =========================================--=======================
-      # IF INSTANTIATED: Build & deploy site normally
-
-      - name: GitHub Pages Build ⚙️ & Deploy 🚀
-        if: steps.is_uninstantiated.outputs.files_exists != 'true'
-        uses: ./.github/actions/deploy-github-pages
-        with:
-          branch: "gh-pages"
-          github_token: "${{ secrets.GITHUB_TOKEN }}"
       
-      # ==================================================================
-      # IF COOKIECUTTER: Instantiate example, build & deploy site normally
-
       - name: Run `cookiecutter` 🍪
         if: steps.is_uninstantiated.outputs.files_exists == 'true'
         uses: andrewthetechie/gha-cookiecutter@main
@@ -46,6 +37,13 @@ jobs:
             "repo_owner": "${{ github.repository_owner }}",
             "num": 2
           }'
+      
+      - name: Commit subdirectory 🏛
+        id: subdirectory_commit
+        if: steps.is_uninstantiated.outputs.files_exists == 'true'
+        uses: "./.github/actions/commit-subdirectory"
+        with:
+          subdirectory: "${{ github.event.repository.name }}"
 
       - name: List files 📄
         if: steps.is_uninstantiated.outputs.files_exists == 'true'
@@ -53,13 +51,19 @@ jobs:
         shell: bash
         run: |
           set -e
-
-          # set permission
-          sudo chown -R $USER:$USER ./
-
           echo "AFTER:"
           tree -a
-
+      
+      - name: Copy workflow
+        if: steps.is_uninstantiated.outputs.files_exists == 'true'
+        working-directory: "./"
+        shell: bash
+        run: |
+          set -e
+          cp -r "./${{ github.event.repository.name }}/.github/" ./
+          echo "AFTER:"
+          tree -a
+      
       - name: GitHub Pages Build ⚙️ & Deploy 🚀
         if: steps.is_uninstantiated.outputs.files_exists == 'true'
         uses: "./.github/actions/deploy-github-pages"
@@ -70,8 +74,9 @@ jobs:
           publish_directory: "./${{ github.event.repository.name }}"
 
       - name: Push branch to GitHub Pages
-        if: steps.is_uninstantiated.outputs.files_exists == 'true'
         uses: "./.github/actions/trigger-github-pages"
         with:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
           homepage: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        
+

@@ -1,0 +1,2 @@
+baseURL = "https://{{ cookiecutter.repo_owner }}.github.io/{{ cookiecutter.repo_name }}/"
+googleAnalytics = ""

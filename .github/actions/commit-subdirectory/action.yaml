@@ -1,0 +1,77 @@
+# Thanks to @sjmiller609
+# REF: https://github.com/actions/toolkit/issues/1054#issuecomment-1142634600
+#
+name: "commit-subdirectory"
+description: "Replace the code in this repository by a subdirectory"
+author: Jérémie Lumbroso
+
+inputs:
+  subdirectory:
+    description: "Subdirectory to replace the repo with (by default, the name of the repository)."
+    required: true
+    default: "${{ github.event.repository.name }}"
+
+outputs:
+  commit_sha:
+    description: "SHA hash of the commit that was produced."
+
+runs:
+  using: composite
+  steps:
+    - name: Install tree
+      shell: bash
+      run: |
+        set -xe
+        sudo apt-get install -y tree
+
+    - name: Replace content with subdirectory's content
+      shell: bash
+      run: |
+        set -xe
+          
+        # set permission
+        sudo chown -R $USER:$USER ./
+
+        # move github repo files to subdirectory
+        mv .git "${{ inputs.subdirectory }}/"
+
+        # cannot create new workflows so preemptively remove those
+        rm -f "${{ inputs.subdirectory }}/.github"
+
+        # move workflows (that can't be changed without a Personal Access Token,
+        # which cannot be preserved in a forked or templated repo!)
+        mv .github "${{ inputs.subdirectory }}/"
+
+        # change working directory
+        cd "${{ github.event.repository.name }}"
+
+        # add files
+        git add .
+
+    - name: Commit 🚀
+      shell: bash
+      run: |
+        set -xe
+
+        # change working directory
+        cd "${{ github.event.repository.name }}"
+
+        # git config
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        # commit -a = "all"
+        # (automatically stage files that have been modified and deleted)
+        git commit -a -m "Updating initial files"
+
+        # push change
+        git push
+        git push -u origin
+
+        # set output
+        # REF: https://github.community/t/checkout-a-commit-created-during-the-same-workflow/120291/6?u=jlumbroso
+        COMMIT_SHA=$(git rev-parse HEAD)
+        echo "::set-output name=commit_sha::$COMMIT_SHA"
+
+        # list files
+        tree
